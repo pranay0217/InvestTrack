@@ -1,6 +1,8 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form"
+import axios from "axios"
+import { Toaster,toast } from "react-hot-toast";
 
 export function Login() {
 
@@ -11,7 +13,28 @@ export function Login() {
         formState: { errors },
       } = useForm()
     
-      const onSubmit = (data) => console.log(data)
+      const onSubmit =async (data) => {
+        const userInfo={
+          email: data.email,
+          password: data.password
+        }
+        await axios.post("http://localhost:3000/user/login", userInfo) // Updated endpoint to login
+        .then((res)=>{
+          console.log(res.data)
+          if(res.data){
+            navigate("/Dashboard") // Redirect to the dashboard page after successful login
+            alert("Login Successful")
+          }
+          localStorage.setItem("Users",JSON.stringify(res.data.user))
+        }).catch((err)=>{ 
+          if(err.response){
+            console.log(err)
+            toast.error("Error: "+ err.response.data.message)
+          } else {
+            alert("An unexpected error occurred.")
+          }
+        })
+      }
 
   return (
     <div style={styles.container}>

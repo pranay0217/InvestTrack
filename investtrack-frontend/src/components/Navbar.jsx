@@ -5,10 +5,11 @@ import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import NavDropdown from 'react-bootstrap/NavDropdown';
 import { useNavigate } from 'react-router-dom';
-
+import { useAuth } from '../context/authProvider';
 
 function NavScrollExample() {
-
+ 
+  const { authUser } = useAuth(); // Accessing the authentication context to get the authUser state
   const navigate = useNavigate();
 
   return (
@@ -26,8 +27,8 @@ function NavScrollExample() {
             <Nav.Link onClick={() => navigate('/AIassistant')} style={{ marginRight: '10px' }}>AI Assistant</Nav.Link>
             <Nav.Link onClick={() => navigate('/ContactUs')} style={{ marginRight: '10px' }}>Contact Us</Nav.Link>
           </Nav>
-            <Button variant="outline-success" style={{ marginRight: '10px', border: "2px solid lightblue"}}>Sign In</Button>
-            <Button variant="outline-success" style={{ marginRight: '60px', backgroundColor: 'lightblue' }}>Learn More</Button>
+          <Button variant="outline-success" onClick={() => navigate('/login')} style={{ marginRight: '10px', border: "2px solid lightblue"}}>Log In</Button>
+          <Button variant="outline-success" onClick={() => navigate('/learn-more')} style={{ marginRight: '60px', backgroundColor: 'lightblue' }}>Learn More</Button>
         </Navbar.Collapse>
       </Container>
     </Navbar>
