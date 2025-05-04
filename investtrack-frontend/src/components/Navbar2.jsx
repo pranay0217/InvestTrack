@@ -4,7 +4,8 @@ import Offcanvas from 'react-bootstrap/Offcanvas';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import Container from 'react-bootstrap/Container';
-import { useNavigate, NavLink } from 'react-router-dom';  // Import NavLink for React Router navigation
+import { useNavigate, NavLink } from 'react-router-dom'; // Import NavLink for React Router navigation
+import logout from './logout' ;// Importing the logout function to handle user logout
 
 function SidebarWithNavbar() {
   const [show, setShow] = useState(false);
@@ -13,6 +14,10 @@ function SidebarWithNavbar() {
   
   // Fixing the localStorage retrieval error
   const username = localStorage.getItem('Users') ? JSON.parse(localStorage.getItem('Users')).name : '';
+  
+  const handleLogout = () => {
+    logout(); // logout functionality to clear user data
+  };
   
   return (
     <>
@@ -54,9 +59,9 @@ function SidebarWithNavbar() {
                 {username ? username.charAt(0).toUpperCase() : ''}
               </span>
             </div>
-            <Navbar.Brand href="/">{username ? username : 'Guest'}</Navbar.Brand>
+            <Navbar.Brand href="/profile">{username ? username : 'Guest'}</Navbar.Brand>
           </div>
-          
+           <h1 style={{color: 'white', fontWeight: 'bold', fontFamily: 'Roboto, sans-serif', marginTop:'10px'}}>INVEST-TRACK</h1>
           <Button
             variant="outline-light"
             onClick={toggleSidebar}
@@ -79,8 +84,16 @@ function SidebarWithNavbar() {
             {/* Using NavLink for React Router navigation */}
             <Nav.Link as={NavLink} to="/Dashboard">Dashboard</Nav.Link>
             <Nav.Link as={NavLink} to="/addnewbroker">Add New Broker</Nav.Link>
-            <Nav.Link as={NavLink} to="/ai-assistance">AI Assistance</Nav.Link>
+            <Nav.Link as={NavLink} to="/AI-assistant">AI Assistance</Nav.Link>
             <Nav.Link as={NavLink} to="/contact">Contact</Nav.Link>
+            <Nav.Link
+              as={NavLink}
+              to="/" // to redirect user to home page after user clicks logout button
+              onClick={handleLogout}
+              style={{ color: 'red', fontWeight: 'bold' }}
+            >
+              Logout
+            </Nav.Link>
           </Nav>
         </Offcanvas.Body>
       </Offcanvas>
