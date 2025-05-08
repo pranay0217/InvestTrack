@@ -1,9 +1,7 @@
 import Button from 'react-bootstrap/Button';
 import Container from 'react-bootstrap/Container';
-import Form from 'react-bootstrap/Form';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
-import NavDropdown from 'react-bootstrap/NavDropdown';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/authProvider';
 
@@ -23,12 +21,12 @@ function NavScrollExample() {
             style={{ maxHeight: '100px' }}
             navbarScroll
           >
-            <Nav.Link href="#action1" style={{ marginLeft: '400px',marginRight: '10px', justifyContent: 'flex-start' }}> How InvestTrack Works </Nav.Link>
+            <Nav.Link onClick={() => navigate('/howinvesttrackworks')} style={{ marginLeft: '400px',marginRight: '10px', justifyContent: 'flex-start' }}> How InvestTrack Works </Nav.Link>
             <Nav.Link onClick={() => navigate('/AIassistant')} style={{ marginRight: '10px' }}>AI Assistant</Nav.Link>
             <Nav.Link onClick={() => navigate('/ContactUs')} style={{ marginRight: '10px' }}>Contact Us</Nav.Link>
           </Nav>
           <Button variant="outline-success" onClick={() => navigate('/login')} style={{ marginRight: '10px', border: "2px solid lightblue"}}>Log In</Button>
-          <Button variant="outline-success" onClick={() => navigate('/learn-more')} style={{ marginRight: '60px', backgroundColor: 'lightblue' }}>Learn More</Button>
+          <Button variant="outline-success" onClick={() => navigate('/learn')} style={{ marginRight: '60px', backgroundColor: 'lightblue' }}>Learn More</Button>
         </Navbar.Collapse>
       </Container>
     </Navbar>

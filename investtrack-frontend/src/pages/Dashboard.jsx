@@ -1,102 +1,144 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import Navbar2 from "../components/Navbar2.jsx";
+import Navbar2 from '../components/Navbar2';
+import { Footer } from '../components/footer';
 
 export function Dashboard() {
-  const [portfolio, setPortfolio] = useState(null);
+  const [portfolio, setPortfolio] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [connected, setConnected] = useState(false);
+  const [error, setError] = useState(null);
+  const [broker, setBroker] = useState("Angel One");
+  const [brokerLogo, setBrokerLogo] = useState("https://asset.brandfetch.io/idDA95rr8l/idok3mM_r-.jpeg");
+  const navigate = useNavigate();
+
+  const fetchPortfolio = async (clientcode, token) => {
+    try {
+      const res = await axios.post(
+        'http://localhost:3000/broker/angelonefetchPortfolio',
+        { clientcode },
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          }
+        }
+      );
+
+      const holdings = res.data?.data?.holdings || [];
+      if (holdings.length > 0) {
+        setPortfolio(holdings);
+        setError(null);
+      } else {
+        setPortfolio([]);
+        setError('No holdings found');
+      }
+    } catch (err) {
+      console.error('Error fetching portfolio:', err);
+      setPortfolio([]);
+      setError('An error occurred while fetching the portfolio');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const fetchPortfolio = async () => {
-      const token = localStorage.getItem("angel_token");
-      const clientcode = localStorage.getItem("angel_clientcode");
+    const token = localStorage.getItem("angel_token");
+    const clientcode = localStorage.getItem("angel_clientcode");
 
-      if (!token || !clientcode) {
-        setConnected(false);
-        setLoading(false);
-        return;
-      }
+    if (!token || !clientcode) {
+      setPortfolio([]);
+      setError('Login required to fetch portfolio');
+      setLoading(false);
+      return;
+    }
 
-      try {
-        const res = await axios.post('http://localhost:3000/broker/angelonefetchPortfolio', {
-          clientcode
-        }, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+    setLoading(true);
+    fetchPortfolio(clientcode, token);
+  }, [localStorage.getItem("angel_clientcode")]); // Re-run on new clientcode
 
-        if (res.data.success && res.data.data) {
-          setPortfolio(res.data.data);
-          setConnected(true);
-        } else {
-          setConnected(false);
-        }
-      } catch (error) {
-        console.error('Error fetching portfolio:', error);
-        setConnected(false);
-      } finally {
-        setLoading(false);
-      }
-    };
+  const handleBuy = (symbol) => {
+    alert(`Buy action triggered for ${symbol}`);
+  };
 
-    fetchPortfolio();
-  }, []);
+  const handleSell = (symbol) => {
+    alert(`Sell action triggered for ${symbol}`);
+  };
 
   return (
-    <div className="bg-gradient-to-r from-indigo-600 to-blue-500 min-h-screen flex flex-col items-center py-4"
-    style={{ paddingTop: '80px', backgroundColor: '#f0f4f8' }}>
+    <>
+    <div className="bg-light min-vh-100" style={{
+      background: 'linear-gradient(to right, rgb(84, 110, 150), rgb(99, 129, 163))'
+    }}>
       <Navbar2 />
-      <div className="container mx-auto p-4 bg-white rounded-lg shadow-lg mt-6">
-        <h1 className="text-4xl font-semibold text-center text-gray-800 mb-6">Your Portfolio</h1>
+      <div className="container py-5">
+        <h1 className="text-center mb-4" style={{ marginTop: '100px', color: '#fff' }}>Your Portfolio</h1>
 
         {loading ? (
-          <div className="flex justify-center items-center">
-            <div className="spinner-border animate-spin border-t-4 border-blue-500 border-solid rounded-full w-16 h-16"></div>
-            <p className="text-xl text-gray-500 ml-4">Loading portfolio...</p>
-          </div>
-        ) : connected && portfolio?.data?.holding?.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {portfolio.data.holding.map((holding, index) => (
-              <div
-                key={index}
-                className="bg-white p-6 rounded-xl shadow-lg border border-gray-200 hover:shadow-2xl transition duration-300 transform hover:scale-105"
-              >
-                <div className="flex justify-between items-center">
-                  <h2 className="text-xl font-semibold text-blue-600">{holding.tradingsymbol}</h2>
-                  <p className="text-sm text-gray-500">{holding.quantity} Units</p>
+          <div className="text-center text-white">Loading portfolio...</div>
+        ) : error ? (
+          <div className="text-center text-white">{error}</div>
+        ) : portfolio.length ? (
+          <div className="d-flex flex-column gap-4">
+            {portfolio.map((holding, idx) => (
+              <div className="card shadow-sm" key={idx}>
+                <div className="card-header d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center">
+                    <img src={brokerLogo} alt={`${broker} logo`} style={{ width: '50px', height: '50px', borderRadius: '50%' }} />
+                    <h5 className="ms-3 mb-0">{broker}</h5>
+                  </div>
                 </div>
-                <div className="mt-4">
-                  <p className="text-gray-600">Avg Price: <span className="font-medium text-gray-700">₹{holding.averageprice}</span></p>
-                  <p className="text-gray-600">Current Price: <span className="font-medium text-gray-700">₹{holding.ltp}</span></p>
-                  <p className="text-gray-600">
-                    P&L: <span className={holding.pnl >= 0 ? 'text-green-600' : 'text-red-600'}>
-                      ₹{holding.pnl.toFixed(2)}
-                    </span>
-                  </p>
-                </div>
-                <div className="mt-4 text-center">
-                  <button className="px-4 py-2 text-white bg-blue-500 rounded-md shadow-md hover:bg-blue-600 focus:outline-none">
-                    View Details
-                  </button>
+                <div className="card-body d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap">
+                  <div className="me-4 mb-3 mb-md-0">
+                    <h5 className="mb-1">{holding.tradingsymbol}</h5>
+                    <p className="mb-1"><strong>Exchange:</strong> {holding.exchange}</p>
+                    <p className="mb-1"><strong>ISIN:</strong> {holding.isin}</p>
+                  </div>
+                  <div className="me-4 mb-3 mb-md-0">
+                    <p className="mb-1"><strong>Qty:</strong> {holding.quantity}</p>
+                    <p className="mb-1"><strong>Avg:</strong> ₹{holding.averageprice}</p>
+                    <p className="mb-1"><strong>LTP:</strong> ₹{holding.ltp}</p>
+                    <p className="mb-1"><strong>Close:</strong> ₹{holding.close}</p>
+                  </div>
+                  <div className="me-4 mb-3 mb-md-0">
+                    <p className={`mb-1 ${holding.profitandloss >= 0 ? "text-success" : "text-danger"}`}>
+                      <strong>P&L:</strong> ₹{holding.profitandloss.toFixed(2)} ({holding.pnlpercentage}%)
+                    </p>
+                  </div>
+                  <div>
+                    <button
+                      className="btn btn-outline-success btn-sm me-2"
+                      onClick={() => handleBuy(holding.tradingsymbol)}
+                    >
+                      Buy More
+                    </button>
+                    <button
+                      className="btn btn-outline-danger btn-sm"
+                      onClick={() => handleSell(holding.tradingsymbol)}
+                    >
+                      Sell
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center mt-10">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-2" style={{marginTop: '75px'}}>No Demat Account Connected</h2>
-            <p className="text-gray-600 mb-4">Please connect your Demat account to view your portfolio.</p>
-            <a
-              href="/addnewbroker"
-              className="inline-block bg-blue-600 text-black px-6 py-2 rounded-lg shadow-lg hover:bg-blue-700 transition"
-            >
-              Connect Broker
-            </a>
-          </div>
+          <div className="text-center mb-4 text-white">No portfolio data found.</div>
         )}
+
+        <div className="text-center mt-5">
+          <button
+            className="btn btn-primary"
+            onClick={() => navigate('/addnewbroker')}
+          >
+            Add New Broker
+          </button>
+        </div>
       </div>
     </div>
+    <Footer/>
+    </>
   );
 }

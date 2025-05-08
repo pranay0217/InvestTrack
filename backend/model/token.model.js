@@ -1,12 +1,12 @@
-// models/Token.js
-import mongoose from "mongoose";
-const tokenSchema = new mongoose.Schema({
-  userId: { type: String, required: true, unique: true },
-  accessToken: { type: String, required: true },
-  refreshToken: { type: String, required: true },
-  feedToken: {type: String},
-  loginTime: {type: Date}
-},{timestamps: true});
+import mongoose from 'mongoose';
 
-const Token = mongoose.model("Token", tokenSchema);
-export default Token;
+const tokenSchema = new mongoose.Schema({
+  clientcode: { type: String, required: true },
+  userId: { type: String, required: true, unique: true }, // user-specific key to prevent duplication
+  jwttoken: String, // required fro getting portfolio
+  refreshToken: String,
+  feedToken: String,
+  loginTime: Date,
+});
+
+export default mongoose.model('Token', tokenSchema);

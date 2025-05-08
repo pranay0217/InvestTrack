@@ -4,21 +4,27 @@ import Offcanvas from 'react-bootstrap/Offcanvas';
 import Nav from 'react-bootstrap/Nav';
 import Navbar from 'react-bootstrap/Navbar';
 import Container from 'react-bootstrap/Container';
-import { useNavigate, NavLink } from 'react-router-dom'; // Import NavLink for React Router navigation
-import logout from './logout' ;// Importing the logout function to handle user logout
+import { useNavigate, NavLink } from 'react-router-dom';
+import logout from './logout';
 
 function SidebarWithNavbar() {
   const [show, setShow] = useState(false);
   const navigate = useNavigate();
+
   const toggleSidebar = () => setShow(!show);
-  
-  // Fixing the localStorage retrieval error
-  const username = localStorage.getItem('Users') ? JSON.parse(localStorage.getItem('Users')).name : '';
-  
+
+  const username = localStorage.getItem('Users')
+    ? JSON.parse(localStorage.getItem('Users')).name
+    : '';
+
   const handleLogout = () => {
-    logout(); // logout functionality to clear user data
+    logout();
   };
-  
+
+  const handleProfileClick = () => {
+    navigate('/profile');
+  };
+
   return (
     <>
       <Navbar
@@ -38,10 +44,11 @@ function SidebarWithNavbar() {
         }}
       >
         <Container fluid>
-          {/* Left-aligned section containing profile image */}
+          {/* Left-aligned profile section */}
           <div style={{ display: 'flex', alignItems: 'center' }}>
-            {/* Circular Frame for Profile Picture */}
+            {/* Clickable Circular Profile Picture */}
             <div
+              onClick={handleProfileClick}
               style={{
                 width: '40px',
                 height: '40px',
@@ -51,17 +58,28 @@ function SidebarWithNavbar() {
                 justifyContent: 'center',
                 alignItems: 'center',
                 marginRight: '10px',
-                border: '2px solid #ccc', // optional border for the frame
+                border: '2px solid #ccc',
+                cursor: 'pointer',
               }}
+              title="Go to Profile"
             >
-              {/* Placeholder for the user's profile picture or initial */}
               <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#333' }}>
                 {username ? username.charAt(0).toUpperCase() : ''}
               </span>
             </div>
-            <Navbar.Brand href="/profile">{username ? username : 'Guest'}</Navbar.Brand>
+
+            {/* Static name label (non-clickable) */}
+            <Navbar.Text style={{ color: 'white' }}>
+              {username ? username : 'Guest'}
+            </Navbar.Text>
           </div>
-           <h1 style={{color: 'white', fontWeight: 'bold', fontFamily: 'Roboto, sans-serif', marginTop:'10px'}}>INVEST-TRACK</h1>
+
+          {/* App Title */}
+          <h1 style={{ color: 'white', fontWeight: 'bold', fontFamily: 'Roboto, sans-serif', marginTop: '10px' }}>
+            INVEST-TRACK
+          </h1>
+
+          {/* Sidebar Toggle Button */}
           <Button
             variant="outline-light"
             onClick={toggleSidebar}
@@ -81,14 +99,13 @@ function SidebarWithNavbar() {
         </Offcanvas.Header>
         <Offcanvas.Body>
           <Nav className="flex-column">
-            {/* Using NavLink for React Router navigation */}
             <Nav.Link as={NavLink} to="/Dashboard">Dashboard</Nav.Link>
             <Nav.Link as={NavLink} to="/addnewbroker">Add New Broker</Nav.Link>
             <Nav.Link as={NavLink} to="/AI-assistant">AI Assistance</Nav.Link>
-            <Nav.Link as={NavLink} to="/contact">Contact</Nav.Link>
+            <Nav.Link as={NavLink} to="/Contact">Contact</Nav.Link>
             <Nav.Link
               as={NavLink}
-              to="/" // to redirect user to home page after user clicks logout button
+              to="/"
               onClick={handleLogout}
               style={{ color: 'red', fontWeight: 'bold' }}
             >

@@ -1,4 +1,5 @@
 import Navbar from '../components/Navbar';
+import { Footer } from '../components/footer';
 
 export function Learn() {
   return (
@@ -125,6 +126,7 @@ export function Learn() {
           </div>
         </div>
       </div>
+      <Footer/>
     </>
   );
 }

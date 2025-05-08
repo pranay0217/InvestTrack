@@ -1,23 +1,23 @@
-import { useAuth } from '../context/authProvider'; // Import authentication context
+import React from 'react';
+import { useNavigate } from 'react-router-dom'; // Ensure you're using this hook for redirection
 
 function logout() {
-    const [authUser, setAuthUser] = useAuth(); // Access authentication context
+  const navigate = useNavigate(); // Use navigate to redirect user to the login page
+  try {
+    // Clear all localStorage items
+    localStorage.clear();
+    localStorage.removeItem('angel_token');
+    localStorage.removeItem('angel_clientcode');
 
-    const handleLogout = () => {
-        try {
-            // Clear user data from the context and local storage
-            setAuthUser({
-                ...authUser, user: null,
-            });
-            localStorage.removeItem("Users"); // Remove user data from local storage
 
-            alert("Logout Successfully!!");
-        } catch (err) {
-            console.error("Logout error: ", err);
-        }
-    };
+    // Optionally, reset your application state (context, state variables, etc.)
+    alert("Logged out successfully!");
 
-    return handleLogout; // Return handleLogout to be invoked in the component
+    // Redirect the user to the login page after logout
+    navigate("/");
+  } catch (err) {
+    console.error("Logout error: ", err);
+  }
 }
 
 export default logout;

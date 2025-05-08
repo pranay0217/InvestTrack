@@ -1,5 +1,7 @@
+import { all } from 'axios';
 import Navbar from '../components/Navbar'
 import { useNavigate } from 'react-router-dom';
+import { Footer } from '../components/footer';
 
 export const Home = () => {
     const navigate = useNavigate();
@@ -11,7 +13,7 @@ export const Home = () => {
     const handleLearn = () => {
         navigate('/learn');
     };
-
+    localStorage.clear(all)
     return (
       <>
         <div className="container-fluid mt-4" style={{backgroundColor: "black"}}>
@@ -37,6 +39,7 @@ export const Home = () => {
           </div>
         </div>
       </div>
+      <Footer/>
       </>
     ); 
   };
