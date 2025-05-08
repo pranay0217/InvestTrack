@@ -2,6 +2,7 @@ import express from "express";
 import dotenv from "dotenv";
 import mongoose from "mongoose";
 import cors from "cors";
+import axios from "axios";
 import userRoute from "./router/user.route.js";
 import brokerRouter from "./router/broker.route.js";
 
@@ -25,6 +26,36 @@ try {
 app.use(express.json());
 app.use("/User", userRoute);
 app.use("/broker", brokerRouter);
+
+// News route with async function to fetch news
+app.get("/news/Latestnews", async (req, res) => {
+  try {
+    const response = await axios.get("https://newsapi.org/v2/everything", {
+      params: {
+        q: "finance OR stock market OR business",
+        language: "en",
+        sortBy: "publishedAt",
+        pageSize: 20,
+        page: 1,
+        apiKey: process.env.NEWS_API,
+      },
+    });
+    
+    const articles = response.data.articles.map((article) => ({
+      title: article.title,
+      description: article.description,
+      url: article.url,
+      urlToImage: article.urlToImage,
+      publishedAt: article.publishedAt,
+      source: article.source.name,
+    }));
+
+    res.status(200).json(articles);
+  } catch (error) {
+    console.error("News Fetch Error:", error);
+    res.status(500).json({ error: "Failed to fetch news" });
+  }
+});
 
 // Fetch Angel One Portfolio Endpoint
 app.post("/broker/angelonefetchPortfolio", async (req, res) => {
