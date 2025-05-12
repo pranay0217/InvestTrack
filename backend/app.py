@@ -1,17 +1,22 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 import http.client
-import json, os
+import json
+import os
 from datetime import datetime
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from fastapi.middleware.cors import CORSMiddleware
 from llama_index.llms.google_genai import GoogleGenAI
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
 
+# Load environment variables
 load_dotenv()
 
 app = FastAPI()
 
+# Add middleware for CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],
@@ -23,24 +28,37 @@ app.add_middleware(
 # MongoDB connection
 client = MongoClient(os.getenv("MONGODB_URI", "mongodb://localhost:27017/"))
 db = client["investtrack"]
-all_holdings_collection = db["all_holdings"]
+angelone_collection = db["Holdings"]
+zerodha_collection = db["holdings"]  # Assuming this might be used later
 
 # Initialize LLM
 llm1 = GoogleGenAI(
-    model="gemini-2.0-flash",  # use available model ID
+    model="gemini-2.0-flash",
     api_key=os.getenv("GOOGLE_API_KEY")
 )
 
 # Request schema
 class AuthData(BaseModel):
+    username: str
     clientcode: str
     token: str
 
+# Custom error handler for validation errors
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    return JSONResponse(
+        status_code=422,
+        content={"detail": exc.errors(), "body": await request.json()},
+    )
+
+# Fetch and store holdings
 @app.post("/fetch_portfolio")
 def fetch_and_store_holdings(data: AuthData):
+    print("Started")
+    username = data.username
     clientcode = data.clientcode
     token = data.token
-    now = datetime.utcnow()
+    now = datetime.now()
 
     headers = {
         'Authorization': f'Bearer {token}',
@@ -65,13 +83,16 @@ def fetch_and_store_holdings(data: AuthData):
 
         parsed_data = json.loads(response_data)
         new_holdings = parsed_data.get("data", [])
+        print("Sending Portfolio")
 
-        result = all_holdings_collection.update_one(
-            {"clientcode": clientcode},
+        # Update in Holdings collection using username and broker
+        angelone_collection.update_one(
+            {"username": username, "broker": "angelone"},
             {
                 "$set": {
                     "holdings": new_holdings,
-                    "last_updated": now
+                    "last_updated": now,
+                    "username": username
                 }
             },
             upsert=True
@@ -87,63 +108,95 @@ def fetch_and_store_holdings(data: AuthData):
         print(f"Exception: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
+# Analyze holdings
 @app.get("/analyze")
-def analyze_holdings(clientcode: str):
-    holdings = all_holdings_collection.find_one({"clientcode": clientcode})
-
-    if not holdings or "holdings" not in holdings:
-        return {
-            "success": False,
-            "message": "No holdings found.",
-            "data": None
-        }
-
-    suggestion_format = """📌 Buy more of INFY - Strong Q4 earnings.
-📉 Reduce Reliance - Weak sentiment after oil dip.
-🕵️ Watchlist: TCS, Wipro – Expected bullish movement next quarter.
-💰 Shift some capital to low-risk mutual funds for balance."""
-
-    analysis_format = """📈 Insight
-Your portfolio is well-diversified across 5 sectors. 20% allocation in Tech is outperforming, while 15% in Energy is underperforming.
-
-💡 Recommendation: Rebalance 5% from underperformers to High-growth Tech ETFs."""
-
-    suggestion_prompt = f"""
-Given the following portfolio data:
-{holdings['holdings']}
-
-Provide suggestions in the following format:
-{suggestion_format}
-Only use the format as a structure. DO NOT include other text or disclaimers.
-"""
-
-    analysis_prompt = f"""
-Given the portfolio below:
-{holdings['holdings']}
-
-Return an analysis in the format:
-{analysis_format}
-Only follow the format, do not add unrelated information.
-"""
-
+def analyze_holdings(username: str):
     try:
-        analysis_response = llm1.complete(analysis_prompt)
-        suggestion_response = llm1.complete(suggestion_prompt)
+        record_angelone = angelone_collection.find_one({"username": username})
+        record_zerodha = zerodha_collection.find_one({"username": username})
 
-        print(analysis_response)
-        print(suggestion_response)
-        print("sending responses...")
+        if not record_angelone or "holdings" not in record_angelone:
+            return {
+                "success": False,
+                "message": "No AngelOne holdings found.",
+                "data": None
+            }
+
+        if not record_zerodha or "holdings" not in record_zerodha:
+            return {
+                "success": False,
+                "message": "No Zerodha holdings found.",
+                "data": None
+            }
+
+        holdings_angelone = record_angelone["holdings"]["holdings"]  # Accessing the inner "holdings" list
+        holdings_zerodha = record_zerodha["holdings"]  # Zerodha has a simpler structure
+
+        combined_holdings = [
+            {"broker": "angelone", "holdings": holdings_angelone},
+            {"broker": "zerodha", "holdings": holdings_zerodha}
+        ]
+
+        # Flatten all holdings for analysis with quantity, avg price, and profit/loss
+        flattened_holdings = []
+        for broker_data in combined_holdings:
+            # Check for the correct structure of holdings for each broker
+            if "holdings" in broker_data and isinstance(broker_data["holdings"], list):
+                for h in broker_data["holdings"]:
+                    # Calculate profit/loss for AngelOne and Zerodha
+                    investment_value = float(h.get("investment_value", 0)) if 'investment_value' in h else 0
+                    current_value = float(h.get("current_value", 0)) if 'current_value' in h else 0
+                    profit_loss = current_value - investment_value
+
+                    # Adding data to flattened holdings list
+                    holding = {
+                        "broker": broker_data["broker"],
+                        "name": h.get("tradingsymbol", "Unknown"),
+                        "quantity": float(h.get("quantity", 0)),
+                        "avg_price": float(h.get("averageprice", h.get("average_price", 0))),
+                        "profit_loss": profit_loss,
+                    }
+                    flattened_holdings.append(holding)
+
+        # LLM Prompt (Custom Financial Advisor Prompt)
+        analysis_prompt = f"""
+You are a financial advisor AI in an investment app.
+Based on the user's current holdings, compare each fund with a better alternative if available.
+Use the following format:
+
+Trust Score: Display fund manager experience as stars, e.g., ⭐⭐⭐ for moderate, ⭐⭐⭐⭐⭐ for excellent.
+
+Risk: Show as a “Safety Meter” — 🟢 Low Risk, 🟡 Medium, 🔴 High.
+
+Returns: Show as ₹X → ₹Y in Z time with a 📈 emoji.
+
+Comparison Statement: "Fund A is better than Fund B: 15% returns, same risk. Switch now? ✅"
+
+Use these parameters as input:
+
+holdings = {json.dumps(flattened_holdings, indent=2)}
+
+Your task is to analyze if a better-performing fund (with equal or lower risk and equal or higher trust score) exists for each holding.
+Present the comparison in the format above.
+Just return the answer only on the given format nothing else should be concluded in the asnwer.
+        """
+
+        # Call LLM for analysis
+        response = llm1.complete(analysis_prompt)
+
         return {
             "success": True,
-            "message": "Analysis completed successfully",
+            "message": "AI financial advisory completed successfully",
             "data": {
-                "analysis": analysis_response.text,
-                "suggestion": suggestion_response.text
+                "combined_holdings": combined_holdings,
+                "advisory": response.text
             }
         }
+
     except Exception as e:
         print(f"Error during LLM completion: {e}")
         raise HTTPException(status_code=500, detail="AI analysis failed")
+
 
 if __name__ == "__main__":
     import uvicorn
