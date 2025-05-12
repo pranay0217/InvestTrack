@@ -15,7 +15,7 @@ const brokers = [
     name: "Zerodha",
     description: "Invest in stocks and mutual funds",
     logo: "https://zerodha.com/static/images/logo.svg",
-    connectable: false,
+    connectable: true,
   },
   {
     name: "Groww",
@@ -23,7 +23,25 @@ const brokers = [
     logo: "https://groww.in/favicon.ico",
     connectable: false,
   },
+  {
+    name: "ICICIdirect",
+    description: "Full-service broker by ICICI Bank",
+    logo: "https://www.icicidirect.com/idirectcontent/images/logo.svg",
+    connectable: false,
+  },
 ];
+
+// 👇 Fixed null check for user data
+const userData = localStorage.getItem("Users");
+let parsedUser = null;
+let username = "";
+
+try {
+  parsedUser = JSON.parse(userData);
+  username = parsedUser?.name || "";
+} catch (e) {
+  console.warn("Failed to parse user data:", e);
+}
 
 export const Addnewbroker = () => {
   const [selectedBroker, setSelectedBroker] = useState(null);
@@ -34,7 +52,9 @@ export const Addnewbroker = () => {
   });
   const [connectedBrokers, setConnectedBrokers] = useState({});
   const [pinVisible, setPinVisible] = useState(false);
-  const Navigate = useNavigate();
+  const navigate = useNavigate();
+
+  const ZERODHA_REDIRECT_URL = "http://localhost:5173/broker/zerodhalogin";
 
   useEffect(() => {
     const storedConnections = JSON.parse(localStorage.getItem("connected_brokers")) || {};
@@ -48,6 +68,11 @@ export const Addnewbroker = () => {
   const handleConnectClick = (broker) => {
     if (broker.name === "Angel One") {
       setSelectedBroker(broker);
+    } else if (broker.name === "Zerodha") {
+      const api_key = "u0hnb2qmwtn6aydg";
+      const loginUrl = `https://kite.zerodha.com/connect/login?v=3&api_key=${api_key}`;
+      sessionStorage.setItem("zerodha_incomplete_session", true);
+      window.location.href = loginUrl;
     } else {
       alert(`${broker.name} integration is coming soon!`);
     }
@@ -56,16 +81,22 @@ export const Addnewbroker = () => {
   const handleInputChange = (e) => {
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!formData.clientcode || !formData.pin || !formData.totp) {
+      alert("All fields are required");
+      return;
+    }
+
     try {
       const payload = {
         ...formData,
-        state: 'web'
+        state: 'web',
+        username: username
       };
 
       const res = await axios.post('http://localhost:3000/broker/angelonelogin', payload);
@@ -88,7 +119,7 @@ export const Addnewbroker = () => {
         persistConnections(updatedConnections);
 
         alert('Login successful! Redirecting to dashboard...');
-        Navigate('/Dashboard');
+        navigate('/Dashboard');
       } else {
         alert('Login failed: ' + (res.data.message || 'Unknown error'));
       }
@@ -120,7 +151,7 @@ export const Addnewbroker = () => {
                         maxWidth: '100px',
                         maxHeight: '60px',
                         objectFit: 'contain',
-                        marginTop: '20px'
+                        marginTop: '20px',
                       }}
                     />
                     <div className="card-body">
@@ -143,9 +174,9 @@ export const Addnewbroker = () => {
               ))}
             </div>
 
-            {selectedBroker && (
+            {selectedBroker?.name === "Angel One" && (
               <div className="mt-5">
-                <h4 className="text-center">Login to {selectedBroker.name}</h4>
+                <h4 className="text-center">Login to Angel One</h4>
                 <form onSubmit={handleSubmit} className="p-4 border rounded bg-light mx-auto shadow" style={{ maxWidth: "500px" }}>
                   <div className="mb-3">
                     <input
