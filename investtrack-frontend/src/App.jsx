@@ -10,6 +10,7 @@ import { Dashboard } from './pages/Dashboard';
 import { Addnewbroker } from './pages/Addnewbroker';
 import { Profile } from './pages/profile';
 import { HowInvestTrackWorks } from './pages/howinvesttrackworks';
+import { ZerodhaCallback } from './pages/ZerodhaCallback'
 import News from './pages/news';
 
 function App() {
@@ -30,6 +31,7 @@ function App() {
       <Route path="/news" element={<News />} />
       <Route path="/howinvesttrackworks" element={<HowInvestTrackWorks />} />
       <Route path="/Dashboard" element={<Dashboard />} />
+      <Route path="/broker/zerodhalogin" element={<ZerodhaCallback />} />
       <Route path="/profile" element={<Profile />} />
     </Routes>
   );
