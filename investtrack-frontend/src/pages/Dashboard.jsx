@@ -5,140 +5,158 @@ import Navbar2 from '../components/Navbar2';
 import { Footer } from '../components/footer';
 
 export function Dashboard() {
-  const [portfolio, setPortfolio] = useState([]);
+  const [zerodhaHoldings, setZerodhaHoldings] = useState([]);
+  const [angelHoldings, setAngelHoldings] = useState([]);
+  const [activeTab, setActiveTab] = useState('zerodha');
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [broker, setBroker] = useState("Angel One");
-  const [brokerLogo, setBrokerLogo] = useState("https://asset.brandfetch.io/idDA95rr8l/idok3mM_r-.jpeg");
   const navigate = useNavigate();
 
-  const fetchPortfolio = async (clientcode, token) => {
+  const fetchAllHoldings = async () => {
     try {
-      const res = await axios.post(
-        'http://localhost:3000/broker/angelonefetchPortfolio',
-        { clientcode },
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          }
-        }
-      );
+      setLoading(true);
+      const userData = localStorage.getItem('Users');
+      const parsedUser = JSON.parse(userData);
+      const username = parsedUser.name;
 
-      const holdings = res.data?.data?.holdings || [];
-      if (holdings.length > 0) {
-        setPortfolio(holdings);
-        setError(null);
+      // Fetch Zerodha Holdings
+      const zerodhaRes = await axios.get(`http://localhost:3000/broker/getHoldings?username=${username}`);
+      if (zerodhaRes.data?.success && Array.isArray(zerodhaRes.data.data)) {
+        const zerodhaData = zerodhaRes.data.data.find(b => b.broker?.toLowerCase() === 'zerodha');
+        setZerodhaHoldings(zerodhaData?.holdings || []);
+      }
+
+      // Fetch Angel One Holdings
+      const angelRes = await axios.get(`http://localhost:3000/broker/angelonefetchportfolio?username=${username}`);
+      console.log('Angel One Response:', angelRes.data); // Log the response for debugging
+
+      if (angelRes.data?.success) {
+        // Now correctly accessing the holdings data from the Angel One response structure
+        const angelData = angelRes.data.data[0];
+        console.log("angel data: ",angelData?.holdings)  // First (and only) element in the 'data' array
+        setAngelHoldings(angelData?.holdings || []);
       } else {
-        setPortfolio([]);
-        setError('No holdings found');
+        console.error('Angel One API did not return success');
+        setAngelHoldings([]);
       }
     } catch (err) {
-      console.error('Error fetching portfolio:', err);
-      setPortfolio([]);
-      setError('An error occurred while fetching the portfolio');
+      console.error('Error fetching holdings:', err);
+      setAngelHoldings([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("angel_token");
-    const clientcode = localStorage.getItem("angel_clientcode");
+    fetchAllHoldings();
+  }, []);
 
-    if (!token || !clientcode) {
-      setPortfolio([]);
-      setError('Login required to fetch portfolio');
-      setLoading(false);
-      return;
-    }
+  const handleBuy = symbol => alert(`Buy action triggered for ${symbol}`);
+  const handleSell = symbol => alert(`Sell action triggered for ${symbol}`);
 
-    setLoading(true);
-    fetchPortfolio(clientcode, token);
-  }, [localStorage.getItem("angel_clientcode")]); // Re-run on new clientcode
+  const renderZerodhaHoldings = (holdings) => (
+    <div className="card shadow-sm mb-4">
+      <div className="card-body">
+        {holdings.map((holding, idx) => (
+          <div className="d-flex justify-content-between align-items-center border-bottom py-2" key={idx}>
+            <div>
+              <h5>{holding.tradingsymbol}</h5>
+              <p><strong>Quantity:</strong> {holding.quantity}</p>
+              <p><strong>Avg Price:</strong> ₹{holding.average_price || 'N/A'}</p>
+            </div>
+            <div>
+              <p><strong>P&L:</strong> ₹{holding.pnl || 'N/A'}</p>
+              <p><strong>LTP:</strong> ₹{holding.ltp || 'N/A'}</p>
+            </div>
+            <div>
+              <p><strong>Current Price:</strong> ₹{holding.last_price || 'N/A'}</p>
+              <p><strong>Exchange:</strong> {holding.exchange || 'N/A'}</p>
+            </div>
+            <div>
+              <button className="btn btn-outline-success btn-sm me-2" onClick={() => handleBuy(holding.tradingsymbol)}>Buy</button>
+              <button className="btn btn-outline-danger btn-sm" onClick={() => handleSell(holding.tradingsymbol)}>Sell</button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 
-  const handleBuy = (symbol) => {
-    alert(`Buy action triggered for ${symbol}`);
-  };
-
-  const handleSell = (symbol) => {
-    alert(`Sell action triggered for ${symbol}`);
+  const renderAngelOneHoldings = (holdings) => {
+    return (
+      <div className="card shadow-sm mb-4">
+        <div className="card-body">
+          {holdings.map((holding, idx) => (
+            <div className="d-flex justify-content-between align-items-center border-bottom py-2" key={idx}>
+              <div>
+                <h5>{holding.tradingsymbol || holding.symbol || 'N/A'}</h5>
+                <p><strong>Quantity:</strong> {holding.quantity || holding.qty || 'N/A'}</p>
+                <p><strong>Avg Price:</strong> ₹{holding.averageprice || holding.avgprice || 'N/A'}</p>
+              </div>
+              <div>
+                <p><strong>P&L:</strong> ₹{holding.profitandloss || holding.pnl || 'N/A'}</p>
+                <p><strong>LTP:</strong> ₹{holding.ltp || holding.lastprice || 'N/A'}</p>
+              </div>
+              <div>
+                <button className="btn btn-outline-success btn-sm me-2" onClick={() => handleBuy(holding.tradingsymbol || holding.symbol)}>Buy</button>
+                <button className="btn btn-outline-danger btn-sm" onClick={() => handleSell(holding.tradingsymbol || holding.symbol)}>Sell</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   };
 
   return (
     <>
-    <div className="bg-light min-vh-100" style={{
-      background: 'linear-gradient(to right, rgb(84, 110, 150), rgb(99, 129, 163))'
-    }}>
-      <Navbar2 />
-      <div className="container py-5">
-        <h1 className="text-center mb-4" style={{ marginTop: '100px', color: '#fff' }}>Your Portfolio</h1>
+      <div className="bg-light min-vh-100" style={{ background: 'linear-gradient(to right, rgb(84, 110, 150), rgb(99, 129, 163))' }}>
+        <Navbar2 />
+        <div style={{ marginTop: '120px' }} />
 
-        {loading ? (
-          <div className="text-center text-white">Loading portfolio...</div>
-        ) : error ? (
-          <div className="text-center text-white">{error}</div>
-        ) : portfolio.length ? (
-          <div className="d-flex flex-column gap-4">
-            {portfolio.map((holding, idx) => (
-              <div className="card shadow-sm" key={idx}>
-                <div className="card-header d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center">
-                    <img src={brokerLogo} alt={`${broker} logo`} style={{ width: '50px', height: '50px', borderRadius: '50%' }} />
-                    <h5 className="ms-3 mb-0">{broker}</h5>
-                  </div>
-                </div>
-                <div className="card-body d-flex justify-content-between align-items-center flex-wrap flex-md-nowrap">
-                  <div className="me-4 mb-3 mb-md-0">
-                    <h5 className="mb-1">{holding.tradingsymbol}</h5>
-                    <p className="mb-1"><strong>Exchange:</strong> {holding.exchange}</p>
-                    <p className="mb-1"><strong>ISIN:</strong> {holding.isin}</p>
-                  </div>
-                  <div className="me-4 mb-3 mb-md-0">
-                    <p className="mb-1"><strong>Qty:</strong> {holding.quantity}</p>
-                    <p className="mb-1"><strong>Avg:</strong> ₹{holding.averageprice}</p>
-                    <p className="mb-1"><strong>LTP:</strong> ₹{holding.ltp}</p>
-                    <p className="mb-1"><strong>Close:</strong> ₹{holding.close}</p>
-                  </div>
-                  <div className="me-4 mb-3 mb-md-0">
-                    <p className={`mb-1 ${holding.profitandloss >= 0 ? "text-success" : "text-danger"}`}>
-                      <strong>P&L:</strong> ₹{holding.profitandloss.toFixed(2)} ({holding.pnlpercentage}%)
-                    </p>
-                  </div>
-                  <div>
-                    <button
-                      className="btn btn-outline-success btn-sm me-2"
-                      onClick={() => handleBuy(holding.tradingsymbol)}
-                    >
-                      Buy More
-                    </button>
-                    <button
-                      className="btn btn-outline-danger btn-sm"
-                      onClick={() => handleSell(holding.tradingsymbol)}
-                    >
-                      Sell
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
+        <div className="container">
+          <ul className="nav nav-pills justify-content-center mb-4">
+            <li className="nav-item">
+              <button className={`nav-link ${activeTab === 'zerodha' ? 'active' : ''}`} onClick={() => setActiveTab('zerodha')}>
+                Zerodha
+              </button>
+            </li>
+            <li className="nav-item">
+              <button className={`nav-link ${activeTab === 'angelone' ? 'active' : ''}`} onClick={() => setActiveTab('angelone')}>
+                Angel One
+              </button>
+            </li>
+          </ul>
+
+          {loading ? (
+            <p className="text-white text-center">Loading data...</p>
+          ) : activeTab === 'zerodha' ? (
+            zerodhaHoldings.length > 0 ? (
+              renderZerodhaHoldings(zerodhaHoldings)
+            ) : (
+              <p className="text-white text-center">
+                No Zerodha data found.
+                <button className="btn btn-sm btn-warning ms-2" onClick={() => navigate('/addnewbroker')}>
+                  Connect Zerodha
+                </button>
+              </p>
+            )
+          ) : angelHoldings.length > 0 ? (
+            renderAngelOneHoldings(angelHoldings)
+          ) : (
+            <p className="text-white text-center">
+              No Angel One data found.
+              <button className="btn btn-sm btn-warning ms-2" onClick={() => navigate('/addnewbroker')}>
+                Connect Angel One
+              </button>
+            </p>
+          )}
+
+          <div className="text-center my-5">
+            <button className="btn btn-primary" onClick={() => navigate('/addnewbroker')}>Add New Broker</button>
           </div>
-        ) : (
-          <div className="text-center mb-4 text-white">No portfolio data found.</div>
-        )}
-
-        <div className="text-center mt-5">
-          <button
-            className="btn btn-primary"
-            onClick={() => navigate('/addnewbroker')}
-          >
-            Add New Broker
-          </button>
         </div>
       </div>
-    </div>
-    <Footer/>
+      <Footer />
     </>
   );
 }
