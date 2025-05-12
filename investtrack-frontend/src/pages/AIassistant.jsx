@@ -16,19 +16,21 @@ export const AIassistant = () => {
 
   const fetchAIData = async () => {
     try {
-      const clientcode = localStorage.getItem("angel_clientcode");
-      if (!clientcode) {
+      const userData = localStorage.getItem('Users');
+      const parsedUser = JSON.parse(userData);
+      const username = parsedUser.name;
+      if (!username) {
         alert("Login first to analyse you portfolio!")
         console.error("Client code not found in localStorage");
         return;
       }
 
       const res = await axios.get('http://localhost:8000/analyze', {
-        params: { clientcode }
+        params: { username }
       });
 
       if (res.data.success) {
-        setAnalysisData(res.data.data.analysis);
+        setAnalysisData(res.data.data.advisory);
         setSuggestionData(res.data.data.suggestion);
       } else {
         console.error("API response was not successful:", res.data.message);
