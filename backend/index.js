@@ -32,7 +32,7 @@ app.get("/news/Latestnews", async (req, res) => {
   try {
     const response = await axios.get("https://newsapi.org/v2/everything", {
       params: {
-        q: "finance OR stock market OR business",
+        q: "finance OR stock market OR business OR sports OR cricket",
         language: "en",
         sortBy: "publishedAt",
         pageSize: 20,
@@ -58,41 +58,39 @@ app.get("/news/Latestnews", async (req, res) => {
 });
 
 // Fetch Angel One Portfolio Endpoint
-app.post("/broker/angelonefetchPortfolio", async (req, res) => {
-  const { clientcode } = req.body;
-
-  if (!clientcode) {
-    return res.status(400).json({
-      success: false,
-      message: "Missing clientcode",
-    });
-  }
-
-  console.log("Fetching portfolio for clientcode:", clientcode);
-
+app.get("/broker/angelonefetchPortfolio", async (req, res) => {
   try {
-    const db = mongoose.connection.db;
-    const collection = db.collection("all_holdings"); // your actual collection
-
-    const portfolio = await collection.findOne({ clientcode });
-
-    if (!portfolio) {
-      return res.status(404).json({
-        success: false,
-        message: "Portfolio not found",
-      });
+    const username = req.query.username;
+    if (!username) {
+      return res.status(400).json({ success: false, message: 'Username is required' });
     }
 
-    // Extract only the holdings array
-    const holdings = portfolio.holdings;
+    const db = mongoose.connection.db;
+    const collection = db.collection("Holdings");
 
-    // Optional: Log the holdings array
-    console.log("Holdings:", JSON.stringify(holdings, null, 2));
+    // Find user holdings by username
+    const userHoldings = await collection.find({ username }).toArray();
+
+    if (!userHoldings || userHoldings.length === 0) {
+      return res.status(404).json({ success: false, message: 'No holdings found for this user' });
+    }
+
+    // Fix the mapping to correctly access the 'holdings' field.
+    const formatted = userHoldings.map(entry => {
+      // Assuming 'entry.holdings' directly contains the array of holdings
+      return {
+        broker: entry.broker,
+        holdings: entry.holdings || [], // Ensure 'holdings' is an array
+      };
+    });
+
+    // console.log("Holdings:", JSON.stringify(formatted, null, 2));
+    // console.log("angelone holdings fetched successfully, sending to frontend");
 
     return res.status(200).json({
       success: true,
-      message: "Portfolio fetched successfully",
-      data: holdings, // Send only the holdings array
+      message: "Holdings fetched successfully",
+      data: formatted,
     });
   } catch (err) {
     console.error("Error fetching portfolio:", err);
@@ -103,6 +101,56 @@ app.post("/broker/angelonefetchPortfolio", async (req, res) => {
     });
   }
 });
+
+
+
+app.get('/broker/getHoldings', async (req, res) => {
+  try {
+    const username = req.query.username;
+    if (!username) {
+      return res.status(400).json({ success: false, message: 'Username is required' });
+    }
+
+    const db = mongoose.connection.db;
+    const collection = db.collection("holdings");
+
+    // Find user holdings by username
+    const userHoldings = await collection.find({ username }).toArray();
+
+    if (!userHoldings || userHoldings.length === 0) {
+      return res.status(404).json({ success: false, message: 'No holdings found for this user' });
+    }
+
+    // Fix the mapping to correctly access the 'holdings' field.
+    const formatted = userHoldings.map(entry => {
+      // Assuming 'entry.holdings' directly contains the array of holdings
+      return {
+        broker: entry.broker,
+        holdings: entry.holdings || [], // Ensure 'holdings' is an array
+      };
+    });
+
+    // console.log("Holdings:", JSON.stringify(formatted, null, 2));
+    // console.log("Zerodha holdings fetched successfully, sending to frontend");
+
+    return res.status(200).json({
+      success: true,
+      message: "Holdings fetched successfully",
+      data: formatted,
+    });
+  } catch (err) {
+    console.error("Error fetching portfolio:", err);
+    return res.status(500).json({
+      success: false,
+      message: "An error occurred while fetching the portfolio",
+      error: err.message,
+    });
+  }
+});
+
+
+
+
 
 app.listen(port, () => {
   console.log(`Server listening on port ${port}`);
