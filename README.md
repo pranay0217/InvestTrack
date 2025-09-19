@@ -131,4 +131,4 @@ cp .env.example .env
 # Backend
 cd backend && npm i
 # Frontend
-cd ../frontend && npm i
+cd ../investtrack-frontend && npm i
